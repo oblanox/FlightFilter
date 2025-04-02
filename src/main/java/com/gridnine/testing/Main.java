@@ -1,12 +1,11 @@
 package com.gridnine.testing;
 
 import com.gridnine.testing.records.Flight;
-import com.gridnine.testing.rules.RuleGroupConfig;
 import com.gridnine.testing.rules.RuleConfig;
+import com.gridnine.testing.rules.RuleGroupConfig;
 import com.gridnine.testing.rules.RuleSetParser;
 import com.gridnine.testing.filters.FieldComparisonFilter;
 import com.gridnine.testing.filters.FlightFilter;
-import com.gridnine.testing.util.JsonFlightParser;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -17,7 +16,7 @@ public class Main {
     public static void main(String[] args) {
         List<Flight> allFlights;
         try {
-            allFlights = JsonFlightParser.parseFlights("src/main/resources/generated_flights.json");
+            allFlights = JsonFlightParser.parse("src/main/resources/flights.json");
         } catch (IOException e) {
             System.err.println("Ошибка чтения JSON с перелётами: " + e.getMessage());
             return;
@@ -46,26 +45,21 @@ public class Main {
                     continue;
                 }
 
-                final FlightFilter baseFilter = new FieldComparisonFilter(field, operator, value, referenceNow);
+                FlightFilter baseFilter = new FieldComparisonFilter(field, operator, value, referenceNow);
 
-                FlightFilter filter = rule.isNegate()
-                        ? flights -> {
-                    List<Flight> result = new ArrayList<>(flights);
-                    result.removeAll(baseFilter.filter(flights));
-                    return result;
+                if (rule.isNegate()) {
+                    filtered.removeAll(baseFilter.filter(filtered));
+                } else {
+                    filtered = baseFilter.filter(filtered);
                 }
-                        : baseFilter;
-
-                filtered = filter.filter(filtered);
             }
 
             System.out.println("\n=== Группа: " + group.getName() + " ===");
+            System.out.println(group.getDescription());
             if (filtered.isEmpty()) {
                 System.out.println("Нет подходящих рейсов.");
             } else {
-                for (Flight f : filtered) {
-                    System.out.println(f);
-                }
+                filtered.forEach(System.out::println);
             }
         }
     }

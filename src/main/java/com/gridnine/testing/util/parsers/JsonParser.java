@@ -1,4 +1,4 @@
-package com.gridnine.testing.util;
+package com.gridnine.testing.util.parsers;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

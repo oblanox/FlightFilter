@@ -1,7 +1,8 @@
-package com.gridnine.testing.util;
+package com.gridnine.testing;
 
 import com.gridnine.testing.records.Flight;
 import com.gridnine.testing.records.Segment;
+import com.gridnine.testing.util.parsers.JsonParser;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -11,26 +12,24 @@ import java.util.Map;
 
 public class JsonFlightParser {
 
-    @SuppressWarnings("unchecked")
-    public static List<Flight> parseFlights(String filePath) throws IOException {
+    public static List<Flight> parse(String filePath) throws IOException {
         String json = JsonParser.readFileAsString(filePath);
         Object parsed = JsonParser.parseJson(json);
 
         List<Flight> flights = new ArrayList<>();
 
         if (parsed instanceof List<?> flightList) {
-            for (Object flightObj : flightList) {
-                if (!(flightObj instanceof Map)) continue;
 
-                Map<String, Object> flightMap = (Map<String, Object>) flightObj;
+            for (Object flightObj : flightList) {
+                if (!(flightObj instanceof Map<?, ?> flightMap)) continue;
+
                 Object segmentsObj = flightMap.get("segments");
                 if (!(segmentsObj instanceof List<?> segmentsList)) continue;
 
                 List<Segment> segments = new ArrayList<>();
                 for (Object segmentObj : segmentsList) {
-                    if (!(segmentObj instanceof Map)) continue;
+                    if (!(segmentObj instanceof Map<?, ?> segmentMap)) continue;
 
-                    Map<String, Object> segmentMap = (Map<String, Object>) segmentObj;
                     Object departureRaw = segmentMap.get("departure");
                     Object arrivalRaw = segmentMap.get("arrival");
 

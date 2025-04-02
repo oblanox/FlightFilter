@@ -1,6 +1,6 @@
 package com.gridnine.testing.rules;
 
-import com.gridnine.testing.util.JsonParser;
+import com.gridnine.testing.util.parsers.JsonParser;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,12 +15,10 @@ public class RuleSetParser {
 
         List<RuleGroupConfig> groups = new ArrayList<>();
 
-        if (parsed instanceof List) {
-            List<?> groupList = (List<?>) parsed;
+        if (parsed instanceof List<?> groupList) {
 
             for (Object groupObj : groupList) {
-                if (!(groupObj instanceof Map)) continue;
-                Map<String, Object> groupMap = (Map<String, Object>) groupObj;
+                if (!(groupObj instanceof Map<?, ?> groupMap)) continue;
 
                 RuleGroupConfig group = new RuleGroupConfig();
                 group.setName((String) groupMap.get("name"));
@@ -29,20 +27,24 @@ public class RuleSetParser {
                 List<RuleConfig> rules = new ArrayList<>();
                 Object rulesObj = groupMap.get("rules");
 
-                if (rulesObj instanceof List) {
-                    List<?> ruleList = (List<?>) rulesObj;
+                if (rulesObj instanceof List<?> ruleList) {
 
                     for (Object ruleObj : ruleList) {
-                        if (!(ruleObj instanceof Map)) continue;
-                        Map<String, Object> ruleMap = (Map<String, Object>) ruleObj;
+                        if (!(ruleObj instanceof Map<?, ?> ruleMap)) continue;
 
                         RuleConfig rule = new RuleConfig();
                         rule.setNegate(Boolean.TRUE.equals(ruleMap.get("negate")));
 
                         Object paramsObj = ruleMap.get("params");
-                        if (paramsObj instanceof Map) {
-                            rule.setParams((Map<String, Object>) paramsObj);
-                            rules.add(rule);
+                        if (paramsObj instanceof Map<?, ?> paramsMap) {
+                            boolean validParams = paramsMap.keySet().stream().allMatch(String.class::isInstance);
+
+                            if (validParams) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> params = (Map<String, Object>) paramsMap;
+                                rule.setParams(params);
+                                rules.add(rule);
+                            }
                         }
                     }
                 }

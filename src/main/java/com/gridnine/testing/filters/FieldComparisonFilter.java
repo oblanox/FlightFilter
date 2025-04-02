@@ -7,6 +7,7 @@ import com.gridnine.testing.util.DebugUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -93,31 +94,70 @@ public class FieldComparisonFilter implements FlightFilter {
         if (!(rawValue instanceof String str)) return (Comparable<?>) rawValue;
 
         str = str.trim();
-        if (!str.startsWith("${") || !str.endsWith("}")) return (Comparable<?>) rawValue;
 
-        String expr = str.substring(2, str.length() - 1).trim();
-        Pattern pattern = Pattern.compile("(\\w+)\\s*([+-])\\s*(\\w+)\\((\\d+)\\)");
-        Matcher matcher = pattern.matcher(expr);
+        // Переменные вида ${...}
+        if (str.startsWith("${") && str.endsWith("}")) {
+            String expr = str.substring(2, str.length() - 1).trim();
 
-        if (matcher.matches()) {
-            String base = matcher.group(1);
-            String sign = matcher.group(2);
-            String unit = matcher.group(3);
-            int amount = Integer.parseInt(matcher.group(4));
+            LocalDateTime result = "dateNow".equals(expr) ? referenceNow : null;
 
-            LocalDateTime baseTime = "dateNow".equals(base) ? referenceNow : null;
-            if (baseTime == null) throw new IllegalArgumentException("Unsupported base variable: " + base);
+            if (expr.startsWith("dateNow")) {
+                result = referenceNow;
+                expr = expr.substring(7).trim(); // remove "dateNow"
+            }
 
-            ChronoUnit chronoUnit = parseChronoUnit(unit);
-            return "+".equals(sign)
-                    ? baseTime.plus(amount, chronoUnit)
-                    : baseTime.minus(amount, chronoUnit);
+            // Поддержка нескольких арифметических операций
+            Pattern opPattern = Pattern.compile("([+-])\\s*(\\w+)\\((\\d+)\\)");
+            Matcher matcher = opPattern.matcher(expr);
+            while (matcher.find()) {
+                String op = matcher.group(1);
+                String unit = matcher.group(2);
+                int value = Integer.parseInt(matcher.group(3));
+
+                ChronoUnit chronoUnit = parseChronoUnit(unit);
+
+                if ("+".equals(op)) {
+                    assert result != null;
+                    result = result.plus(value, chronoUnit);
+                } else {
+                    assert result != null;
+                    result = result.minus(value, chronoUnit);
+                }
+            }
+
+            if (result != null) return result;
+            throw new IllegalArgumentException("Invalid variable expression: " + str);
         }
 
-        if ("dateNow".equals(expr)) return referenceNow;
+        // Даты и времена
+        if (str.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?")) {
+            try {
+                return LocalDateTime.parse(str.length() == 16 ? str + ":00" : str);
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Invalid ISO datetime format: " + str, e);
+            }
+        }
 
-        throw new IllegalArgumentException("Invalid variable expression: " + str);
+        // Простой плюсоминус : "5 + 10"
+        if (str.matches("-?\\d+(\\s*[+-]\\s*\\d+)+")) {
+            String[] tokens = str.split("\\s*[+-]\\s*");
+            String[] ops = str.replaceAll("[^+-]", "").split("");
+            int sum = Integer.parseInt(tokens[0].trim());
+            for (int i = 1; i < tokens.length; i++) {
+                int num = Integer.parseInt(tokens[i].trim());
+                sum += ops[i - 1].equals("-") ? -num : num;
+            }
+            return sum;
+        }
+
+        // Простое число
+        if (str.matches("-?\\d+")) return Long.parseLong(str);
+        if (str.matches("-?\\d+\\.\\d+")) return Double.parseDouble(str);
+
+        throw new IllegalArgumentException("Unsupported parameter format: " + str);
     }
+
+
 
     private ChronoUnit parseChronoUnit(String unit) {
         return switch (unit.toLowerCase()) {
