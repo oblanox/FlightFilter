@@ -1,0 +1,46 @@
+[
+  {
+    "name": "1. Только рейсы в будущем",
+    "rules": [
+      {
+        "params": {
+          "field": "arrival",
+          "operator": ">",
+          "value": "${dateNow}"
+        }
+      }
+    ]
+  },
+  {
+    "name": "2. Вылет в пределах 3 дней и не больше 2 сегментов",
+    "rules": [
+      {
+        "params": {
+          "field": "departure",
+          "operator": "<=",
+          "value": "${dateNow + day(3)}"
+        }
+      },
+      {
+        "params": {
+          "field": "segmentCount",
+          "operator": "<=",
+          "value": 2
+        }
+      }
+    ]
+  },
+  {
+    "name": "3. Удаление рейсов с короткой пересадкой",
+    "rules": [
+      {
+        "negate": true,
+        "params": {
+          "field": "groundTime",
+          "operator": "<=",
+          "value": 90
+        }
+      }
+    ]
+  }
+]
