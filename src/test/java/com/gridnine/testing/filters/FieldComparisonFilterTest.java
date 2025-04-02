@@ -19,7 +19,7 @@ public class FieldComparisonFilterTest {
         Flight flightOld = new Flight(List.of(new Segment(referenceNow.minusDays(1), referenceNow.minusHours(23))));
 
         FlightFilter filter = new FieldComparisonFilter("departure", ">", referenceNow, referenceNow);
-        List<Flight> result = filter.filter(List.of(flight, flightOld));
+        List<Flight> result = filter.flights(List.of(flight, flightOld));
 
         assertEquals(1, result.size());
         assertTrue(result.contains(flight));
@@ -33,7 +33,7 @@ public class FieldComparisonFilterTest {
                 new Segment(referenceNow.plusHours(2), referenceNow.plusHours(3))));
 
         FlightFilter filter = new FieldComparisonFilter("segmentCount", "<=", 1);
-        List<Flight> result = filter.filter(List.of(flightOneSegment, flightTwoSegments));
+        List<Flight> result = filter.flights(List.of(flightOneSegment, flightTwoSegments));
 
         assertEquals(1, result.size());
         assertTrue(result.contains(flightOneSegment));
@@ -50,7 +50,7 @@ public class FieldComparisonFilterTest {
                 new Segment(referenceNow.plusHours(3), referenceNow.plusHours(4))));
 
         FlightFilter filter = new FieldComparisonFilter("groundTime", ">", 90);
-        List<Flight> result = filter.filter(List.of(flightShortGround, flightLongGround));
+        List<Flight> result = filter.flights(List.of(flightShortGround, flightLongGround));
 
         assertEquals(1, result.size());
         assertTrue(result.contains(flightLongGround));
@@ -61,6 +61,6 @@ public class FieldComparisonFilterTest {
         Flight flight = new Flight(List.of(new Segment(referenceNow, referenceNow.plusHours(1))));
         FlightFilter filter = new FieldComparisonFilter("unsupported", ">", 1);
 
-        assertThrows(IllegalArgumentException.class, () -> filter.filter(List.of(flight)));
+        assertThrows(IllegalArgumentException.class, () -> filter.flights(List.of(flight)));
     }
 }

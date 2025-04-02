@@ -9,12 +9,21 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class FieldComparisonFilter implements FlightFilter {
+
+    private static final String FIELD_DEPARTURE = "departure";
+    private static final String FIELD_ARRIVAL = "arrival";
+    private static final String FIELD_SEGMENT_COUNT = "segmentCount";
+    private static final String FIELD_GROUND_TIME = "groundTime";
+    private static final String FIELD_TOTAL_DURATION = "totalFlightDuration";
+    private static final String VAR_DATE_NOW = "dateNow";
 
     private final String field;
     private final String operator;
@@ -29,10 +38,10 @@ public class FieldComparisonFilter implements FlightFilter {
         this.field = field;
         this.operator = operator;
         this.referenceNow = referenceNow;
-        this.value = resolveVariable(value);
+        this.value = value;
     }
 
-    public List<Flight> filter(List<Flight> flights) {
+    public List<Flight> flights(List<Flight> flights) {
         return flights.stream()
                 .filter(this::isValid)
                 .filter(this::matches)
@@ -41,7 +50,13 @@ public class FieldComparisonFilter implements FlightFilter {
                         field, operator, value, f)))
                 .collect(Collectors.toList());
     }
+
     private boolean isValid(Flight flight) {
+        String prop = System.getProperty("skipInvalidSegments", "true");
+        boolean skip = Boolean.parseBoolean(prop);
+
+        if (!skip) return true;
+
         for (Segment segment : flight.segments()) {
             if (segment.arrivalDate().isBefore(segment.departureDate())) {
                 DebugUtils.debug("Skipped invalid segment: " + segment);
@@ -52,42 +67,64 @@ public class FieldComparisonFilter implements FlightFilter {
     }
 
     private boolean matches(Flight flight) {
-        return switch (field) {
-            case "departure" -> RuleConfig.evaluate(operator,
-                    flight.segments().get(0).departureDate(),
-                    (LocalDateTime) value);
+        Map<String, Comparable<?>> context = buildFlightContext(flight);
+        Comparable<?> comparisonValue = resolveComparisonValue(this.value, context);
 
-            case "arrival" -> {
-                List<Segment> segments = flight.segments();
-                yield RuleConfig.evaluate(operator,
-                        segments.get(segments.size() - 1).arrivalDate(),
-                        (LocalDateTime) value);
+        if (FIELD_DEPARTURE.equals(field) || FIELD_ARRIVAL.equals(field)) {
+            return RuleConfig.evaluate(operator,
+                    (LocalDateTime) context.get(field),
+                    (LocalDateTime) comparisonValue);
+        } else if (FIELD_SEGMENT_COUNT.equals(field) || FIELD_GROUND_TIME.equals(field) || FIELD_TOTAL_DURATION.equals(field)) {
+            return RuleConfig.evaluate(operator,
+                    toLong(context.get(field)),
+                    toLong(comparisonValue));
+        }
+
+        throw new IllegalArgumentException("Unsupported field: " + field);
+    }
+
+    private Map<String, Comparable<?>> buildFlightContext(Flight flight) {
+        Map<String, Comparable<?>> context = new HashMap<>();
+        List<Segment> segments = flight.segments();
+
+        context.put(FIELD_DEPARTURE, segments.get(0).departureDate());
+        context.put(FIELD_ARRIVAL, segments.get(segments.size() - 1).arrivalDate());
+        context.put(FIELD_SEGMENT_COUNT, (long) segments.size());
+
+        long groundTime = 0L;
+        for (int i = 1; i < segments.size(); i++) {
+            groundTime += Duration.between(
+                    segments.get(i - 1).arrivalDate(),
+                    segments.get(i).departureDate()).toMinutes();
+        }
+        context.put(FIELD_GROUND_TIME, groundTime);
+
+        long totalDuration = Duration.between(
+                segments.get(0).departureDate(),
+                segments.get(segments.size() - 1).arrivalDate()).toMinutes();
+        context.put(FIELD_TOTAL_DURATION, totalDuration);
+
+        return context;
+    }
+
+    private Comparable<?> resolveComparisonValue(Object raw, Map<String, Comparable<?>> context) {
+        if (!(raw instanceof String str)) return (Comparable<?>) raw;
+        str = str.trim();
+
+        if (str.startsWith("${") && str.endsWith("}")) {
+            String expr = str.substring(2, str.length() - 1).trim();
+            if (expr.startsWith(VAR_DATE_NOW)) {
+                return evaluateDateArithmetic(referenceNow, expr.substring(VAR_DATE_NOW.length()));
             }
 
-            case "segmentCount" -> RuleConfig.evaluate(operator,
-                    (long) flight.segments().size(),
-                    toLong(value));
-
-            case "groundTime" -> {
-                List<Segment> segs = flight.segments();
-                long groundTimeMinutes = 0L;
-                for (int i = 1; i < segs.size(); i++) {
-                    LocalDateTime prevArrival = segs.get(i - 1).arrivalDate();
-                    LocalDateTime nextDeparture = segs.get(i).departureDate();
-                    groundTimeMinutes += Duration.between(prevArrival, nextDeparture).toMinutes();
-                }
-                yield RuleConfig.evaluate(operator, groundTimeMinutes, toLong(value));
+            if (context.containsKey(expr)) {
+                return context.get(expr);
             }
 
-            case "totalFlightDuration" -> {
-                LocalDateTime start = flight.segments().get(0).departureDate();
-                LocalDateTime end = flight.segments().get(flight.segments().size() - 1).arrivalDate();
-                long totalMinutes = Duration.between(start, end).toMinutes();
-                yield RuleConfig.evaluate(operator, totalMinutes, toLong(value));
-            }
+            throw new IllegalArgumentException("Неизвестная переменная: " + expr);
+        }
 
-            default -> throw new IllegalArgumentException("Unsupported field: " + field);
-        };
+        return resolveVariable(raw);
     }
 
     private Comparable<?> resolveVariable(Object rawValue) {
@@ -95,41 +132,6 @@ public class FieldComparisonFilter implements FlightFilter {
 
         str = str.trim();
 
-        // Переменные вида ${...}
-        if (str.startsWith("${") && str.endsWith("}")) {
-            String expr = str.substring(2, str.length() - 1).trim();
-
-            LocalDateTime result = "dateNow".equals(expr) ? referenceNow : null;
-
-            if (expr.startsWith("dateNow")) {
-                result = referenceNow;
-                expr = expr.substring(7).trim(); // remove "dateNow"
-            }
-
-            // Поддержка нескольких арифметических операций
-            Pattern opPattern = Pattern.compile("([+-])\\s*(\\w+)\\((\\d+)\\)");
-            Matcher matcher = opPattern.matcher(expr);
-            while (matcher.find()) {
-                String op = matcher.group(1);
-                String unit = matcher.group(2);
-                int value = Integer.parseInt(matcher.group(3));
-
-                ChronoUnit chronoUnit = parseChronoUnit(unit);
-
-                if ("+".equals(op)) {
-                    assert result != null;
-                    result = result.plus(value, chronoUnit);
-                } else {
-                    assert result != null;
-                    result = result.minus(value, chronoUnit);
-                }
-            }
-
-            if (result != null) return result;
-            throw new IllegalArgumentException("Invalid variable expression: " + str);
-        }
-
-        // Даты и времена
         if (str.matches("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(:\\d{2})?")) {
             try {
                 return LocalDateTime.parse(str.length() == 16 ? str + ":00" : str);
@@ -138,7 +140,6 @@ public class FieldComparisonFilter implements FlightFilter {
             }
         }
 
-        // Простой плюсоминус : "5 + 10"
         if (str.matches("-?\\d+(\\s*[+-]\\s*\\d+)+")) {
             String[] tokens = str.split("\\s*[+-]\\s*");
             String[] ops = str.replaceAll("[^+-]", "").split("");
@@ -150,14 +151,30 @@ public class FieldComparisonFilter implements FlightFilter {
             return sum;
         }
 
-        // Простое число
         if (str.matches("-?\\d+")) return Long.parseLong(str);
         if (str.matches("-?\\d+\\.\\d+")) return Double.parseDouble(str);
 
         throw new IllegalArgumentException("Unsupported parameter format: " + str);
     }
 
+    private LocalDateTime evaluateDateArithmetic(LocalDateTime base, String expression) {
+        String expr = expression.trim();
+        Matcher opMatcher = Pattern.compile("([+-])\\s*(\\w+)\\((\\d+)\\)").matcher(expr);
+        LocalDateTime result = base;
+        while (opMatcher.find()) {
+            String op = opMatcher.group(1);
+            String unit = opMatcher.group(2);
+            int value = Integer.parseInt(opMatcher.group(3));
+            ChronoUnit chronoUnit = parseChronoUnit(unit);
 
+            if ("+".equals(op)) {
+                result = result.plus(value, chronoUnit);
+            } else {
+                result = result.minus(value, chronoUnit);
+            }
+        }
+        return result;
+    }
 
     private ChronoUnit parseChronoUnit(String unit) {
         return switch (unit.toLowerCase()) {

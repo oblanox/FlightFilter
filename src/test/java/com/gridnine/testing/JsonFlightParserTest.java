@@ -1,5 +1,6 @@
 package com.gridnine.testing;
 
+import com.gridnine.testing.filters.JsonFlightParser;
 import com.gridnine.testing.records.Flight;
 import org.junit.jupiter.api.Test;
 

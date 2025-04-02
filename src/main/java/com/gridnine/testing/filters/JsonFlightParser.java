@@ -1,4 +1,4 @@
-package com.gridnine.testing;
+package com.gridnine.testing.filters;
 
 import com.gridnine.testing.records.Flight;
 import com.gridnine.testing.records.Segment;

@@ -2,6 +2,7 @@ package com.gridnine.testing;
 
 import com.gridnine.testing.filters.FieldComparisonFilter;
 import com.gridnine.testing.filters.FlightFilter;
+import com.gridnine.testing.filters.JsonFlightParser;
 import com.gridnine.testing.records.Flight;
 import com.gridnine.testing.rules.RuleConfig;
 import com.gridnine.testing.rules.RuleGroupConfig;
@@ -36,7 +37,7 @@ public class FlightFilterTest {
                 FlightFilter baseFilter = new FieldComparisonFilter(field, operator, value, referenceNow);
                 filteredFlights = rule.isNegate()
                         ? negateFilter(baseFilter, filteredFlights)
-                        : baseFilter.filter(filteredFlights);
+                        : baseFilter.flights(filteredFlights);
             }
 
             System.out.println("\n=== Проверка группы: " + group.getName() + " ===");
@@ -52,13 +53,17 @@ public class FlightFilterTest {
                 case "Больше 1 сегмента и вылет завтра" -> assertEquals(3, filteredFlights.size());
                 case "Через 5 дней и 30 мин" -> assertEquals(4, filteredFlights.size());
                 case "Пересадка ровно 30 минут" -> assertEquals(1, filteredFlights.size());
+                case "Вылет до текущего момента времени" -> assertEquals(1, filteredFlights.size());
+                case "Сегменты с датой прилёта раньше даты вылета" -> assertEquals(0, filteredFlights.size());
+                case "Общее время на земле более двух часов" -> assertEquals(2, filteredFlights.size());
+
                 default -> throw new IllegalStateException("Неизвестная группа: " + group.getName());
             }
         }
     }
 
     private List<Flight> negateFilter(FlightFilter filter, List<Flight> flights) {
-        List<Flight> baseFiltered = filter.filter(flights);
+        List<Flight> baseFiltered = filter.flights(flights);
         return flights.stream()
                 .filter(flight -> !baseFiltered.contains(flight))
                 .toList();
