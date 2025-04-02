@@ -1,5 +1,6 @@
 package com.gridnine.testing.filters;
 
+import com.gridnine.testing.exceptions.JsonFileNotReadException;
 import com.gridnine.testing.records.Flight;
 import com.gridnine.testing.records.Segment;
 import com.gridnine.testing.util.parsers.JsonParser;
@@ -13,7 +14,13 @@ import java.util.Map;
 public class JsonFlightParser {
 
     public static List<Flight> parse(String filePath) throws IOException {
-        String json = JsonParser.readFileAsString(filePath);
+
+        String json;
+        try {
+            json = JsonParser.readFileAsString(filePath);
+        } catch (IOException e) {
+            throw new JsonFileNotReadException("Файл JSON полетов не читается по причине: " + e.getMessage(),e);
+        }
         Object parsed = JsonParser.parseJson(json);
 
         List<Flight> flights = new ArrayList<>();

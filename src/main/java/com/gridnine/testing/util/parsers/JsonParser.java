@@ -1,5 +1,7 @@
 package com.gridnine.testing.util.parsers;
 
+import com.gridnine.testing.exceptions.JsonParsingException;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -22,7 +24,7 @@ public class JsonParser {
         } else if (json.matches("-?\\d+")) {
             return Long.parseLong(json);
         } else {
-            throw new IllegalArgumentException("Invalid JSON value: " + json);
+            throw new JsonParsingException("Invalid JSON value: " + json);
         }
     }
 

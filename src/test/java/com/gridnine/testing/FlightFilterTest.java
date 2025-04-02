@@ -19,8 +19,12 @@ public class FlightFilterTest {
 
     private final LocalDateTime referenceNow = LocalDateTime.of(2025, 4, 2, 16, 0);
 
+
     @Test
     void testFilteringResults() throws IOException {
+
+        System.setProperty("skipInvalidSegments", "true"); // скипаем неправильное, если кто тронет параметр - ошибка
+
         List<Flight> allFlights = JsonFlightParser.parse("src/test/resources/flights.json");
         List<RuleGroupConfig> ruleGroups = RuleSetParser.parse("src/test/resources/rules.json");
 

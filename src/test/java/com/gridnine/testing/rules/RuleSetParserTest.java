@@ -1,8 +1,8 @@
 package com.gridnine.testing.rules;
 
+import com.gridnine.testing.exceptions.JsonFileNotReadException;
 import org.junit.jupiter.api.Test;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 
@@ -28,12 +28,12 @@ public class RuleSetParserTest {
 
     @Test
     void testParseInvalidFilePath() {
-        assertThrows(IOException.class, () -> RuleSetParser.parse("invalid/path.json"));
+        assertThrows(JsonFileNotReadException.class, () -> RuleSetParser.parse("invalid/path.json"));
     }
 
     @Test
     void testParseEmptyOrInvalidJson() {
-        assertThrows(FileNotFoundException.class, () -> {
+        assertThrows(JsonFileNotReadException.class, () -> {
             RuleSetParser.parse("src/test/resources/empty_or_invalid.json");
         });
     }

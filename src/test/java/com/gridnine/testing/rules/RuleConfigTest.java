@@ -1,5 +1,6 @@
 package com.gridnine.testing.rules;
 
+import com.gridnine.testing.exceptions.InvalidLogicParametersException;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -36,7 +37,7 @@ public class RuleConfigTest {
 
     @Test
     void testEvaluateWithInvalidOperator() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(InvalidLogicParametersException.class,
                 () -> RuleConfig.evaluate("unsupported", 5, 5));
     }
 }

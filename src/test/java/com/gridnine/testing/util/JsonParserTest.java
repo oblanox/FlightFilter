@@ -1,5 +1,6 @@
 package com.gridnine.testing.util;
 
+import com.gridnine.testing.exceptions.JsonParsingException;
 import com.gridnine.testing.util.parsers.JsonParser;
 import org.junit.jupiter.api.Test;
 
@@ -39,6 +40,6 @@ public class JsonParserTest {
     @Test
     void testParseInvalidJson() {
         String json = "{key:value}"; // без кавычек
-        assertThrows(IllegalArgumentException.class, () -> JsonParser.parseJson(json));
+        assertThrows(JsonParsingException.class, () -> JsonParser.parseJson(json));
     }
 }

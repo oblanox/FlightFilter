@@ -1,6 +1,7 @@
 package com.gridnine.testing.rules;
 
 import java.util.List;
+import java.util.Objects;
 
 public class RuleGroupConfig {
     private String name;
@@ -29,5 +30,19 @@ public class RuleGroupConfig {
 
     public void setRules(List<RuleConfig> rules) {
         this.rules = rules;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        RuleGroupConfig that = (RuleGroupConfig) o;
+        return Objects.equals(getName(), that.getName()) && Objects.equals(getDescription(), that.getDescription())
+                && Objects.equals(getRules(), that.getRules());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getName(), getDescription(), getRules());
     }
 }

@@ -1,5 +1,7 @@
 package com.gridnine.testing.filters;
 
+import com.gridnine.testing.exceptions.InvalidDateTimeFormatException;
+import com.gridnine.testing.exceptions.UnsupportedFilterVariableException;
 import com.gridnine.testing.records.Flight;
 import com.gridnine.testing.records.Segment;
 import org.junit.jupiter.api.Test;
@@ -61,6 +63,64 @@ public class FieldComparisonFilterTest {
         Flight flight = new Flight(List.of(new Segment(referenceNow, referenceNow.plusHours(1))));
         FlightFilter filter = new FieldComparisonFilter("unsupported", ">", 1);
 
-        assertThrows(IllegalArgumentException.class, () -> filter.flights(List.of(flight)));
+        assertThrows(UnsupportedFilterVariableException.class, () -> filter.flights(List.of(flight)));
+    }
+
+    @Test
+    void testInvalidDateTimeFormat() {
+        String invalidDate = "2025-04-02T12:00:XYZ";
+
+        FlightFilter filter = new FieldComparisonFilter("departure", ">", invalidDate);
+        Flight flight = new Flight(List.of(new Segment(referenceNow.plusHours(1), referenceNow.plusHours(2))));
+
+        assertThrows(UnsupportedFilterVariableException.class, () -> filter.flights(List.of(flight)));
+    }
+
+    @Test
+    void testUnknownFieldName() {
+        Flight flight = new Flight(List.of(new Segment(referenceNow, referenceNow.plusHours(1))));
+        FlightFilter filter = new FieldComparisonFilter("unknownField", ">", 1);
+
+        assertThrows(UnsupportedFilterVariableException.class, () -> filter.flights(List.of(flight)));
+    }
+
+    @Test
+    void testUnsupportedChronoUnit() {
+        String expr = "${dateNow+lightyear(1)}";
+
+        Flight flight = new Flight(List.of(new Segment(referenceNow.plusDays(2), referenceNow.plusDays(2).plusHours(2))));
+        FlightFilter filter = new FieldComparisonFilter("departure", ">", expr, referenceNow);
+
+        assertThrows(UnsupportedFilterVariableException.class, () -> filter.flights(List.of(flight)));
+    }
+
+    @Test
+    void testUnknownVariableInExpression() {
+        String expr = "${unknownVariable}";
+
+        Flight flight = new Flight(List.of(new Segment(referenceNow.plusDays(2), referenceNow.plusDays(2).plusHours(2))));
+        FlightFilter filter = new FieldComparisonFilter("departure", ">", expr, referenceNow);
+
+        assertThrows(UnsupportedFilterVariableException.class, () -> filter.flights(List.of(flight)));
+    }
+
+    @Test
+    void testUnsupportedParameterFormat() {
+        String expr = "abc123";
+
+        Flight flight = new Flight(List.of(new Segment(referenceNow.plusDays(2), referenceNow.plusDays(2).plusHours(2))));
+        FlightFilter filter = new FieldComparisonFilter("departure", ">", expr, referenceNow);
+
+        assertThrows(UnsupportedFilterVariableException.class, () -> filter.flights(List.of(flight)));
+    }
+
+    @Test
+    void testInvalidIsoDate_ThrowsCustomException() {
+        String malformed = "2025-04-02T25:99";
+
+        Flight flight = new Flight(List.of(new Segment(referenceNow, referenceNow.plusHours(2))));
+        FlightFilter filter = new FieldComparisonFilter("departure", ">", malformed, referenceNow);
+
+        assertThrows(InvalidDateTimeFormatException.class, () -> filter.flights(List.of(flight)));
     }
 }

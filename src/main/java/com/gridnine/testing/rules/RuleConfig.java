@@ -1,5 +1,7 @@
 package com.gridnine.testing.rules;
 
+import com.gridnine.testing.exceptions.InvalidLogicParametersException;
+
 import java.util.Map;
 
 public class RuleConfig {
@@ -36,7 +38,7 @@ public class RuleConfig {
             case "<=" -> actual.compareTo(expected) <= 0;
             case "==" -> actual.compareTo(expected) == 0;
             case "!=" -> actual.compareTo(expected) != 0;
-            default -> throw new IllegalArgumentException("Unsupported operator: " + operator);
+            default -> throw new InvalidLogicParametersException("Unsupported operator: " + operator);
         };
     }
 }

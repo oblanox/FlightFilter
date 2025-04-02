@@ -1,5 +1,7 @@
 package com.gridnine.testing.filters;
 
+import com.gridnine.testing.exceptions.InvalidDateTimeFormatException;
+import com.gridnine.testing.exceptions.UnsupportedFilterVariableException;
 import com.gridnine.testing.records.Flight;
 import com.gridnine.testing.records.Segment;
 import com.gridnine.testing.rules.RuleConfig;
@@ -80,7 +82,7 @@ public class FieldComparisonFilter implements FlightFilter {
                     toLong(comparisonValue));
         }
 
-        throw new IllegalArgumentException("Unsupported field: " + field);
+        throw new UnsupportedFilterVariableException("Unsupported field: " + field);
     }
 
     private Map<String, Comparable<?>> buildFlightContext(Flight flight) {
@@ -121,7 +123,7 @@ public class FieldComparisonFilter implements FlightFilter {
                 return context.get(expr);
             }
 
-            throw new IllegalArgumentException("Неизвестная переменная: " + expr);
+            throw new UnsupportedFilterVariableException("Неизвестная переменная: " + expr);
         }
 
         return resolveVariable(raw);
@@ -136,7 +138,7 @@ public class FieldComparisonFilter implements FlightFilter {
             try {
                 return LocalDateTime.parse(str.length() == 16 ? str + ":00" : str);
             } catch (DateTimeParseException e) {
-                throw new IllegalArgumentException("Invalid ISO datetime format: " + str, e);
+                throw new InvalidDateTimeFormatException("Invalid ISO datetime format: " + str, e);
             }
         }
 
@@ -154,7 +156,7 @@ public class FieldComparisonFilter implements FlightFilter {
         if (str.matches("-?\\d+")) return Long.parseLong(str);
         if (str.matches("-?\\d+\\.\\d+")) return Double.parseDouble(str);
 
-        throw new IllegalArgumentException("Unsupported parameter format: " + str);
+        throw new UnsupportedFilterVariableException("Unsupported parameter format: " + str);
     }
 
     private LocalDateTime evaluateDateArithmetic(LocalDateTime base, String expression) {
@@ -184,7 +186,7 @@ public class FieldComparisonFilter implements FlightFilter {
             case "day" -> ChronoUnit.DAYS;
             case "week" -> ChronoUnit.WEEKS;
             case "month" -> ChronoUnit.MONTHS;
-            default -> throw new IllegalArgumentException("Unsupported time unit: " + unit);
+            default -> throw new UnsupportedFilterVariableException("Unsupported time unit: " + unit);
         };
     }
 

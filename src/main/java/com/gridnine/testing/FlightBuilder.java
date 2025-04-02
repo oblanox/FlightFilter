@@ -1,5 +1,7 @@
 package com.gridnine.testing;
 
+import com.gridnine.testing.exceptions.InvalidLogicParametersException;
+import com.gridnine.testing.exceptions.JsonFileNotReadException;
 import com.gridnine.testing.filters.FieldComparisonFilter;
 import com.gridnine.testing.filters.FlightFilter;
 import com.gridnine.testing.filters.JsonFlightParser;
@@ -22,16 +24,14 @@ public class FlightBuilder {
         try {
             allFlights = JsonFlightParser.parse("src/main/resources/flights.json");
         } catch (IOException e) {
-            System.err.println("Ошибка чтения JSON с перелётами: " + e.getMessage());
-            return List.of();
+            throw new JsonFileNotReadException("Ошибка чтения JSON с перелётами: " + e.getMessage(),e);
         }
 
         List<RuleGroupConfig> ruleGroups;
         try {
             ruleGroups = RuleSetParser.parse(ruleSetJsonPath);
         } catch (IOException e) {
-            System.err.println("Ошибка чтения JSON с правилами: " + e.getMessage());
-            return List.of();
+            throw  new JsonFileNotReadException("Ошибка чтения JSON с правилами: " + e.getMessage(),e);
         }
 
         LocalDateTime referenceNow = LocalDateTime.now();
@@ -46,8 +46,7 @@ public class FlightBuilder {
                 Object raw = rule.getParam("value");
 
                 if (!(raw instanceof Comparable<?> value)) {
-                    System.err.println("Значение параметра не сравнимо: " + raw);
-                    continue;
+                    throw new InvalidLogicParametersException("Значение параметра не сравнимо: " + raw);
                 }
 
                 FlightFilter baseFilter = new FieldComparisonFilter(field, operator, value, referenceNow);
@@ -59,13 +58,14 @@ public class FlightBuilder {
                 }
             }
 
-            int totalSegments = filtered.stream()
-                    .mapToInt(f -> f.segments().size())
+            long totalSegments = filtered.stream()
+                    .mapToLong(f -> f.segments().size())
                     .sum();
 
             result.add(new Filter(
                     group.getName(),
                     group.getDescription(),
+                    totalSegments,
                     filtered
             ));
         }

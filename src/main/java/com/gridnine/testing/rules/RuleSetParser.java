@@ -1,5 +1,6 @@
 package com.gridnine.testing.rules;
 
+import com.gridnine.testing.exceptions.JsonFileNotReadException;
 import com.gridnine.testing.util.parsers.JsonParser;
 
 import java.io.IOException;
@@ -10,7 +11,14 @@ import java.util.Map;
 public class RuleSetParser {
 
     public static List<RuleGroupConfig> parse(String filePath) throws IOException {
-        String jsonContent = JsonParser.readFileAsString(filePath);
+
+        String jsonContent;
+        try {
+            jsonContent = JsonParser.readFileAsString(filePath);
+        } catch (IOException e) {
+            throw new JsonFileNotReadException("Файл с правилами не читается: " + e.getMessage(),e);
+        }
+
         Object parsed = JsonParser.parseJson(jsonContent);
 
         List<RuleGroupConfig> groups = new ArrayList<>();

@@ -12,9 +12,10 @@ public class Main {
         List<Filter> results = FlightBuilder.createFlights("src/main/resources/rules.json");
 
         for (Filter filter : results) {
-            System.out.printf("\n=== %s ===\n%s\nПерелётов: %d\n",
+            System.out.printf("\n=== %s ===\n%s\nСегментов: %d | Перелётов: %d\n",
                     filter.name(),
                     filter.description(),
+                    filter.segmentsCount(),
                     filter.flights().size());
 
             for (Flight flight : filter.flights()) {
