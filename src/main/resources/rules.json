@@ -1,46 +1,41 @@
 [
   {
-    "name": "1. Только рейсы в будущем",
-    "rules": [
-      {
-        "params": {
-          "field": "arrival",
-          "operator": ">",
-          "value": "${dateNow}"
-        }
-      }
-    ]
-  },
-  {
-    "name": "2. Вылет в пределах 3 дней и не больше 2 сегментов",
+    "name": "Вылет до текущего момента времени",
     "rules": [
       {
         "params": {
           "field": "departure",
-          "operator": "<=",
-          "value": "${dateNow + day(3)}"
-        }
-      },
-      {
-        "params": {
-          "field": "segmentCount",
-          "operator": "<=",
-          "value": 2
+          "operator": "<",
+          "value": "${dateNow}"
         }
       }
-    ]
+    ],
+    "description": "Исключает рейсы, у которых вылет до текущего момента"
   },
   {
-    "name": "3. Удаление рейсов с короткой пересадкой",
+    "name": "Сегменты с датой прилёта раньше даты вылета",
     "rules": [
       {
-        "negate": true,
         "params": {
-          "field": "groundTime",
-          "operator": "<=",
-          "value": 90
+          "field": "arrival",
+          "operator": "<",
+          "value": "${departure}"
         }
       }
-    ]
+    ],
+    "description": "Исключает рейсы, где хотя бы один сегмент имеет прилёт раньше вылета"
+  },
+  {
+    "name": "Общее время на земле превышает два часа",
+    "rules": [
+      {
+        "params": {
+          "field": "groundTime",
+          "operator": ">",
+          "value": 120
+        }
+      }
+    ],
+    "description": "Исключает рейсы, в которых общее время на земле больше 2 часов"
   }
 ]
